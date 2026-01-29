@@ -23,6 +23,7 @@ const api = {
   },
   reports: {
     monthlySummary: (year: number, month: number) => ipcRenderer.invoke('db:reports:monthlySummary', { year, month }),
+    cycleSummary: (year: number, month: number, startDay: number) => ipcRenderer.invoke('db:reports:cycleSummary', { year, month, startDay }),
     categoryBreakdown: (dateFrom: string, dateTo: string) => ipcRenderer.invoke('db:reports:categoryBreakdown', { dateFrom, dateTo })
   },
   settings: {

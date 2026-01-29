@@ -35,6 +35,7 @@ declare global {
       }
       reports: {
         monthlySummary: (year: number, month: number) => Promise<MonthlySummary>
+        cycleSummary: (year: number, month: number, startDay: number) => Promise<MonthlySummary>
         categoryBreakdown: (dateFrom: string, dateTo: string) => Promise<CategorySummary[]>
       }
       settings: {

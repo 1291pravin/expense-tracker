@@ -4,6 +4,8 @@ import type { SyncStatus, SyncResult } from '../types'
 
 export const useSettingsStore = defineStore('settings', () => {
   const currencySymbol = ref('$')
+  const budgetAmount = ref<number>(0)
+  const cycleStartDay = ref<number>(1)
   const syncStatus = ref<SyncStatus>({
     isConnected: false,
     lastSync: null
@@ -27,6 +29,14 @@ export const useSettingsStore = defineStore('settings', () => {
       if (symbol) {
         currencySymbol.value = symbol
       }
+      const budget = await window.api.settings.get('budget_amount')
+      if (budget) {
+        budgetAmount.value = parseFloat(budget)
+      }
+      const startDay = await window.api.settings.get('cycle_start_day')
+      if (startDay) {
+        cycleStartDay.value = parseInt(startDay, 10)
+      }
       const status = await window.api.sync.status()
       syncStatus.value = status
     } catch (e) {
@@ -44,6 +54,34 @@ export const useSettingsStore = defineStore('settings', () => {
       currencySymbol.value = symbol
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update currency'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function setBudgetAmount(amount: number) {
+    loading.value = true
+    error.value = null
+    try {
+      await window.api.settings.set('budget_amount', amount.toString())
+      budgetAmount.value = amount
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update budget'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function setCycleStartDay(day: number) {
+    loading.value = true
+    error.value = null
+    try {
+      await window.api.settings.set('cycle_start_day', day.toString())
+      cycleStartDay.value = day
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update cycle start day'
       throw e
     } finally {
       loading.value = false
@@ -132,6 +170,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   return {
     currencySymbol,
+    budgetAmount,
+    cycleStartDay,
     syncStatus,
     syncing,
     loading,
@@ -140,6 +180,8 @@ export const useSettingsStore = defineStore('settings', () => {
     lastSyncDate,
     loadSettings,
     setCurrencySymbol,
+    setBudgetAmount,
+    setCycleStartDay,
     authenticate,
     logout,
     pushToCloud,

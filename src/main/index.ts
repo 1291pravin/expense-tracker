@@ -103,6 +103,10 @@ function registerIpcHandlers(): void {
     return reportsRepo.getMonthlySummary(year, month)
   })
 
+  ipcMain.handle('db:reports:cycleSummary', (_, { year, month, startDay }) => {
+    return reportsRepo.getCycleSummary(year, month, startDay)
+  })
+
   ipcMain.handle('db:reports:categoryBreakdown', (_, { dateFrom, dateTo }) => {
     return reportsRepo.getCategoryBreakdown(dateFrom, dateTo)
   })

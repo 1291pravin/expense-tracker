@@ -4,6 +4,14 @@ import { useSettingsStore } from '../stores/settings'
 
 const settingsStore = useSettingsStore()
 
+// Budget settings
+const budgetAmount = ref(0)
+const savingBudget = ref(false)
+
+// Billing cycle settings
+const cycleStartDay = ref(1)
+const savingCycle = ref(false)
+
 // Currency settings
 const currencySymbol = ref('$')
 const savingCurrency = ref(false)
@@ -26,6 +34,24 @@ const currencyOptions = [
   { symbol: '₽', name: 'RUB - Russian Ruble' },
   { symbol: 'R$', name: 'BRL - Brazilian Real' }
 ]
+
+async function saveBudget() {
+  savingBudget.value = true
+  try {
+    await settingsStore.setBudgetAmount(budgetAmount.value)
+  } finally {
+    savingBudget.value = false
+  }
+}
+
+async function saveCycleStartDay() {
+  savingCycle.value = true
+  try {
+    await settingsStore.setCycleStartDay(cycleStartDay.value)
+  } finally {
+    savingCycle.value = false
+  }
+}
 
 async function saveCurrency() {
   savingCurrency.value = true
@@ -121,6 +147,8 @@ function formatLastSync(date: Date | null): string {
 }
 
 onMounted(async () => {
+  budgetAmount.value = settingsStore.budgetAmount
+  cycleStartDay.value = settingsStore.cycleStartDay
   currencySymbol.value = settingsStore.currencySymbol
 
   // Load OAuth credentials
@@ -134,6 +162,45 @@ onMounted(async () => {
 <template>
   <div class="p-8 max-w-3xl">
     <h1 class="text-2xl font-bold text-gray-900 mb-8">Settings</h1>
+
+    <!-- Monthly Budget -->
+    <div class="card mb-6">
+      <h2 class="card-header">Monthly Budget</h2>
+      <p class="text-sm text-gray-500 mb-4">Set a monthly spending budget to track on the dashboard.</p>
+      <div class="flex items-end gap-4">
+        <div class="flex-1">
+          <label class="input-label">Budget Amount</label>
+          <input
+            v-model.number="budgetAmount"
+            type="number"
+            min="0"
+            step="100"
+            class="input"
+            placeholder="e.g. 5000"
+          />
+        </div>
+        <button @click="saveBudget" :disabled="savingBudget" class="btn btn-primary">
+          {{ savingBudget ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Billing Cycle -->
+    <div class="card mb-6">
+      <h2 class="card-header">Billing Cycle</h2>
+      <p class="text-sm text-gray-500 mb-4">Choose which day of the month your tracking period starts (e.g., salary day).</p>
+      <div class="flex items-end gap-4">
+        <div class="flex-1">
+          <label class="input-label">Cycle Start Day</label>
+          <select v-model.number="cycleStartDay" class="input">
+            <option v-for="d in 28" :key="d" :value="d">{{ d }}</option>
+          </select>
+        </div>
+        <button @click="saveCycleStartDay" :disabled="savingCycle" class="btn btn-primary">
+          {{ savingCycle ? 'Saving...' : 'Save' }}
+        </button>
+      </div>
+    </div>
 
     <!-- Currency Settings -->
     <div class="card mb-6">

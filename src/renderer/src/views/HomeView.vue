@@ -15,8 +15,51 @@ const loading = ref(false)
 const currentMonth = computed(() => currentDate.value.getMonth() + 1)
 const currentYear = computed(() => currentDate.value.getFullYear())
 
-const monthName = computed(() => {
-  return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+const cycleStartDay = computed(() => settingsStore.cycleStartDay)
+const budgetAmount = computed(() => settingsStore.budgetAmount)
+
+const monthLabel = computed(() => {
+  if (cycleStartDay.value === 1) {
+    return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+  const m = currentMonth.value
+  const y = currentYear.value
+  const prevM = m === 1 ? 12 : m - 1
+  const prevY = m === 1 ? y - 1 : y
+  const sd = cycleStartDay.value
+  const ed = sd - 1
+  const fromLabel = new Date(prevY, prevM - 1, sd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const toLabel = new Date(y, m - 1, ed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${fromLabel} – ${toLabel}`
+})
+
+const budgetRemaining = computed(() => {
+  if (!budgetAmount.value || !monthlySummary.value) return budgetAmount.value
+  return budgetAmount.value - monthlySummary.value.total
+})
+
+const budgetSpentPercent = computed(() => {
+  if (!budgetAmount.value) return 0
+  const spent = monthlySummary.value?.total || 0
+  return Math.min((spent / budgetAmount.value) * 100, 100)
+})
+
+const budgetColor = computed(() => {
+  const remaining = budgetRemaining.value
+  if (!budgetAmount.value) return 'text-gray-900'
+  const pct = (remaining / budgetAmount.value) * 100
+  if (pct > 20) return 'text-green-600'
+  if (pct > 5) return 'text-yellow-600'
+  return 'text-red-600'
+})
+
+const budgetBarColor = computed(() => {
+  const remaining = budgetRemaining.value
+  if (!budgetAmount.value) return '#22c55e'
+  const pct = (remaining / budgetAmount.value) * 100
+  if (pct > 20) return '#22c55e'
+  if (pct > 5) return '#eab308'
+  return '#ef4444'
 })
 
 const formattedTotal = computed(() => {
@@ -27,11 +70,19 @@ const formattedTotal = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    // Load monthly summary
-    monthlySummary.value = await window.api.reports.monthlySummary(
-      currentYear.value,
-      currentMonth.value
-    )
+    // Load monthly/cycle summary
+    if (cycleStartDay.value !== 1) {
+      monthlySummary.value = await window.api.reports.cycleSummary(
+        currentYear.value,
+        currentMonth.value,
+        cycleStartDay.value
+      )
+    } else {
+      monthlySummary.value = await window.api.reports.monthlySummary(
+        currentYear.value,
+        currentMonth.value
+      )
+    }
 
     // Load recent expenses (last 10)
     const allExpenses = await window.api.expenses.getFiltered({})
@@ -64,7 +115,7 @@ function nextMonth() {
   currentDate.value = new Date(currentYear.value, currentMonth.value, 1)
 }
 
-watch([currentMonth, currentYear], () => {
+watch([currentMonth, currentYear, cycleStartDay], () => {
   loadData()
 })
 
@@ -89,7 +140,7 @@ onMounted(() => {
       <button @click="previousMonth" class="p-2 hover:bg-gray-100 rounded-lg">
         <span class="text-xl">←</span>
       </button>
-      <h2 class="text-lg font-semibold text-gray-700">{{ monthName }}</h2>
+      <h2 class="text-lg font-semibold text-gray-700">{{ monthLabel }}</h2>
       <button @click="nextMonth" class="p-2 hover:bg-gray-100 rounded-lg">
         <span class="text-xl">→</span>
       </button>
@@ -125,8 +176,25 @@ onMounted(() => {
         <div v-else class="text-gray-400">No expenses yet</div>
       </div>
 
-      <!-- Average per Day -->
-      <div class="card">
+      <!-- Budget Remaining (shown when budget is set) -->
+      <div v-if="budgetAmount" class="card">
+        <div class="text-sm text-gray-500 mb-1">Budget Remaining</div>
+        <div class="text-3xl font-bold" :class="budgetColor">
+          {{ formatCurrency(budgetRemaining) }}
+        </div>
+        <div class="text-sm text-gray-400 mt-1">
+          {{ formatCurrency(monthlySummary?.total || 0) }} of {{ formatCurrency(budgetAmount) }} spent
+        </div>
+        <div class="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            class="h-full rounded-full transition-all"
+            :style="{ width: `${budgetSpentPercent}%`, backgroundColor: budgetBarColor }"
+          ></div>
+        </div>
+      </div>
+
+      <!-- Average per Day (shown when no budget is set) -->
+      <div v-else class="card">
         <div class="text-sm text-gray-500 mb-1">Average per Day</div>
         <div class="text-3xl font-bold text-gray-900">
           {{
